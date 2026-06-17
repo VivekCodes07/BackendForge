@@ -1,0 +1,10 @@
+{"id":1,"name":"iPhone 16","category":"Smartphone","price":89999,"stock":25,"brand":"Apple","inStock":true}
+{"id":2,"name":"Galaxy S26","category":"Smartphone","price":84999,"stock":18,"brand":"Samsung","inStock":true}
+{"id":3,"name":"Pixel 10","category":"Smartphone","price":79999,"stock":12,"brand":"Google","inStock":true}
+{"id":4,"name":"MacBook Pro M5","category":"Laptop","price":189999,"stock":8,"brand":"Apple","inStock":true}
+{"id":5,"name":"Dell XPS 15","category":"Laptop","price":159999,"stock":6,"brand":"Dell","inStock":true}
+{"id":6,"name":"Sony WH-1000XM6","category":"Headphones","price":29999,"stock":30,"brand":"Sony","inStock":true}
+{"id":7,"name":"iPad Air","category":"Tablet","price":59999,"stock":15,"brand":"Apple","inStock":true}
+{"id":8,"name":"Samsung Galaxy Tab S11","category":"Tablet","price":54999,"stock":10,"brand":"Samsung","inStock":true}
+{"id":9,"name":"Logitech MX Master 4","category":"Mouse","price":9999,"stock":40,"brand":"Logitech","inStock":true}
+{"id":10,"name":"Mechanical Keyboard Pro","category":"Keyboard","price":7999,"stock":22,"brand":"Keychron","inStock":true}

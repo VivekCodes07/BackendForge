@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "age": 28,
+    "isActive": true,
+    "role": "Developer"
+  },
+  {
+    "id": 2,
+    "name": "Jane Smith",
+    "email": "jane.smith@example.com",
+    "age": 32,
+    "isActive": false,
+    "role": "Designer"
+  },
+  {
+    "id": 3,
+    "name": "Alex Jones",
+    "email": "alex.jones@example.com",
+    "age": 25,
+    "isActive": true,
+    "role": "Tester"
+  },
+  {
+    "id": 4,
+    "name": "Sarah Wilson",
+    "email": "sarah.wilson@example.com",
+    "age": 29,
+    "isActive": true,
+    "role": "Project Manager"
+  },
+  {
+    "id": 5,
+    "name": "Michael Brown",
+    "email": "michael.brown@example.com",
+    "age": 35,
+    "isActive": false,
+    "role": "DevOps Engineer"
+  },
+  {
+    "id": 6,
+    "name": "Emily Davis",
+    "email": "emily.davis@example.com",
+    "age": 27,
+    "isActive": true,
+    "role": "Frontend Developer"
+  },
+  {
+    "id": 7,
+    "name": "David Miller",
+    "email": "david.miller@example.com",
+    "age": 31,
+    "isActive": true,
+    "role": "Backend Developer"
+  },
+  {
+    "id": 8,
+    "name": "Olivia Taylor",
+    "email": "olivia.taylor@example.com",
+    "age": 24,
+    "isActive": false,
+    "role": "Business Analyst"
+  },
+  {
+    "id": 9,
+    "name": "James Anderson",
+    "email": "james.anderson@example.com",
+    "age": 30,
+    "isActive": true,
+    "role": "Database Administrator"
+  },
+  {
+    "id": 10,
+    "name": "Sophia Thomas",
+    "email": "sophia.thomas@example.com",
+    "age": 26,
+    "isActive": true,
+    "role": "UI/UX Designer"
+  }
+]
