@@ -1,0 +1,102 @@
+[
+  {
+    "id": 1,
+    "name": "Sony WH-1000XM4 Wireless Headphones",
+    "brand": "Sony",
+    "category": "Electronics",
+    "price": 348.00,
+    "rating": 4.8,
+    "inStock": true,
+    "imageUrl": "https://example.com"
+  },
+  {
+    "id": 2,
+    "name": "Apple MacBook Air M3 (13-inch, 2024)",
+    "brand": "Apple",
+    "category": "Computers",
+    "price": 1099.00,
+    "rating": 4.9,
+    "inStock": true,
+    "imageUrl": "https://example.com"
+  },
+  {
+    "id": 3,
+    "name": "Nike Air Max 270 Sneakers",
+    "brand": "Nike",
+    "category": "Footwear",
+    "price": 160.00,
+    "rating": 4.5,
+    "inStock": true,
+    "imageUrl": "https://example.com"
+  },
+  {
+    "id": 4,
+    "name": "Hydro Flask 32 oz Wide Mouth",
+    "brand": "Hydro Flask",
+    "category": "Sports & Outdoors",
+    "price": 44.95,
+    "rating": 4.7,
+    "inStock": false,
+    "imageUrl": "https://example.com"
+  },
+  {
+    "id": 5,
+    "name": "Kindle Paperwhite (16 GB)",
+    "brand": "Amazon",
+    "category": "Electronics",
+    "price": 149.99,
+    "rating": 4.6,
+    "inStock": true,
+    "imageUrl": "https://example.com"
+  },
+  {
+    "id": 6,
+    "name": "Logitech MX Master 3S Wireless Mouse",
+    "brand": "Logitech",
+    "category": "Computer Accessories",
+    "price": 99.99,
+    "rating": 4.8,
+    "inStock": true,
+    "imageUrl": "https://example.com"
+  },
+  {
+    "id": 7,
+    "name": "Instant Pot Duo Plus 9-in-1 (6 Quart)",
+    "brand": "Instant Pot",
+    "category": "Kitchen Appliances",
+    "price": 129.95,
+    "rating": 4.7,
+    "inStock": true,
+    "imageUrl": "https://example.com"
+  },
+  {
+    "id": 8,
+    "name": "Levi's 511 Slim Fit Men's Jeans",
+    "brand": "Levi's",
+    "category": "Apparel",
+    "price": 69.50,
+    "rating": 4.4,
+    "inStock": true,
+    "imageUrl": "https://example.com"
+  },
+  {
+    "id": 9,
+    "name": "Anker 737 Power Bank (PowerCore 24K)",
+    "brand": "Anker",
+    "category": "Electronics",
+    "price": 149.99,
+    "rating": 4.6,
+    "inStock": false,
+    "imageUrl": "https://example.com"
+  },
+  {
+    "id": 10,
+    "name": "Ergonomic Mesh Office Chair",
+    "brand": "Hbada",
+    "category": "Office Furniture",
+    "price": 219.99,
+    "rating": 4.3,
+    "inStock": true,
+    "imageUrl": "https://example.com"
+  }
+]
