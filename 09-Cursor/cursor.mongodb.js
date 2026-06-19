@@ -325,6 +325,7 @@ Very common in real applications.
 // Real World Example
 // ------------------------------------------------------
 
+
 db.posts.find({})
         .sort({ likes: -1 })
         .skip(0)
