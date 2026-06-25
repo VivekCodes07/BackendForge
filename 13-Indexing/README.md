@@ -89,15 +89,11 @@ Each lesson contains:
 - [x] Indexes & Sorting
 - [x] Multikey Indexes
 - [x] Explain Plans
-- [ ] Covered Queries
-- [ ] Index Selectivity
-- [ ] Index Trade-offs
-- [ ] Managing Indexes
-- [ ] TTL Indexes
-- [ ] Text Indexes
-- [ ] Partial Indexes
-- [ ] Sparse Indexes
-- [ ] Indexing Best Practices
+- [x] Covered Queries
+- [x] TTL Indexes
+- [x] Text Indexes
+- [x] Partial Indexes
+- [x] Indexing Best Practices
 
 ---
 
