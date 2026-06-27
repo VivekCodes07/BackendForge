@@ -363,6 +363,217 @@ Much more scalable.
 
 ---
 
+# One Question I Had Before Moving Forward
+
+After understanding what Aggregation is, one question immediately came into my mind.
+
+If Aggregation is this powerful...
+
+Why not always use it?
+
+Why do we even have `find()`?
+
+At first, I thought maybe `aggregate()` completely replaces `find()`.
+
+But that's not true.
+
+Both have different purposes.
+
+---
+
+# When Should I Use `find()`?
+
+Whenever I simply want to retrieve documents,
+
+`find()` is usually the right choice.
+
+For example:
+
+```javascript
+db.courses.find()
+```
+
+or
+
+```javascript
+db.courses.find({
+    category: "Backend"
+})
+```
+
+Suppose I only want a few fields.
+
+I can even use projection with `find()`.
+
+```javascript
+db.courses.find(
+    {
+        category: "Backend"
+    },
+    {
+        title: 1,
+        instructor: 1,
+        price: 1,
+        _id: 0
+    }
+)
+```
+
+I don't need Aggregation here.
+
+I'm simply fetching data.
+
+`find()` is shorter.
+
+Cleaner.
+
+And easier to read.
+
+---
+
+# Then Why Do We Need Aggregation?
+
+Aggregation becomes useful when retrieving documents is no longer enough.
+
+Suppose my manager asks:
+
+> "Show me the average price of Backend courses."
+
+Or,
+
+> "Which instructor has the highest number of enrolled students?"
+
+Or,
+
+> "Generate a report showing total students per category."
+
+These aren't simple retrieval operations anymore.
+
+MongoDB has to process the data before returning it.
+
+That's exactly what Aggregation is built for.
+
+Example:
+
+```javascript
+db.courses.aggregate([
+    {
+        $match: {
+            category: "Backend"
+        }
+    },
+    {
+        $group: {
+            _id: "$instructor",
+            totalStudents: {
+                $sum: "$studentsEnrolled"
+            }
+        }
+    }
+])
+```
+
+This is something `find()` simply cannot do.
+
+---
+
+# Does Every Aggregation Start With `$match`?
+
+Another thing I wondered was:
+
+> "Do I always have to use `$match` first?"
+
+The answer is:
+
+No.
+
+It's just very common.
+
+Suppose I only want to reshape every document.
+
+I can directly write:
+
+```javascript
+db.courses.aggregate([
+    {
+        $project: {
+            _id: 0,
+            title: 1,
+            price: 1
+        }
+    }
+])
+```
+
+No `$match` at all.
+
+Or maybe I simply want to count courses by category.
+
+```javascript
+db.courses.aggregate([
+    {
+        $group: {
+            _id: "$category"
+        }
+    }
+])
+```
+
+Again,
+
+No `$match`.
+
+So `$match` is **not mandatory**.
+
+It's considered a best practice because filtering early usually means fewer documents need to be processed by the remaining stages.
+
+Less work.
+
+Better performance.
+
+---
+
+# My Rule Of Thumb
+
+Whenever I'm confused, I'll ask myself one simple question.
+
+```text
+Do I just want the documents?
+
+↓
+
+Use find().
+```
+
+```text
+Do I want MongoDB to calculate, group,
+transform or analyze the data?
+
+↓
+
+Use aggregate().
+```
+
+That single question makes it much easier to decide which one I should use.
+
+---
+
+# One Important Realization
+
+Aggregation is **not a replacement** for `find()`.
+
+In fact,
+
+real-world applications still use `find()` all the time.
+
+Aggregation is used only when the problem becomes more than just fetching documents.
+
+That's when MongoDB starts behaving less like a storage engine,
+
+and more like a data processing engine.
+
+---
+
 # Aggregation Is Like Building With LEGO
 
 One thing I noticed is that Aggregation never tries to do everything in one command.
