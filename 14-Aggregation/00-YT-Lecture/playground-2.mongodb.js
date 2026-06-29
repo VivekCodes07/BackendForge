@@ -120,23 +120,78 @@ db.products.aggregate([
  * One bucket = One output document
  */
 
-
 db.products.aggregate([
   {
     $project: {
       name: 1,
       price: 1,
       _id: 0,
-      productName: {$toUpper: "$name"},
+      productName: { $toUpper: "$name" },
       inStock: "True",
       totalPrice: {
-        $sum: ["$price", 999]
+        $sum: ["$price", 999],
       },
-    }
+    },
   },
   {
     $sort: {
-      price: 1
-    }
+      price: 1,
+    },
+  },
+]);
+
+/* -------------- $lookup ------------- 
+   - $loopup is used to join data from another collection. It works like SQL Join.
+*/
+
+db.orders.aggregate([
+  {
+    $lookup: {
+      from: "products",
+      localField: "products.productId",
+      foreignField: "_id",
+      as: "productDetails",
+    },
+  },
+]);
+
+
+/* -------------- $unwind ---------------
+   - $unwind is used to break an array into separate documents
+*/
+
+db.products.aggregate([
+  {
+    $unwind: "$tags"
   }
 ])
+
+
+db.orders.aggregate([
+  // Keep only the products array (and _id by default)
+  {
+    $project: {
+      products: 1
+    }
+  },
+
+  // Create a separate document for each product in the products array
+  {
+    $unwind: "$products"
+  },
+
+  // Join each product with its corresponding document
+  // from the products collection
+  {
+    $lookup: {
+      from: "products",                  // Collection to join
+      localField: "products.productId",  // Field in orders
+      foreignField: "_id",               // Matching field in products
+      as: "productDetails"               // Output array containing matched product(s)
+    }
+  }
+
+  // Optional:
+  // Add {$unwind: "$productDetails"} here if you want
+  // productDetails to be a single object instead of an array.
+]);
