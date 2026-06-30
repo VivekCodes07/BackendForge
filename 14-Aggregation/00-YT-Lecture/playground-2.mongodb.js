@@ -1,197 +1,186 @@
+```js
+// Switch to database
 use("myDb");
 
-/*
+/* =====================================================
+   BASIC QUERY (Find + Sort)
+===================================================== */
+
+// Find Apple products and show selected fields, sorted by price (descending)
 db.products.find(
-    {name: "Apple"},
-    {name: 1, price: 1, category: 1, brand: 1}
-).sort({price: -1})
-*/
+  { name: "Apple" },
+  { name: 1, price: 1, category: 1, brand: 1 }
+).sort({ price: -1 });
+
+
+/* =====================================================
+   AGGREGATION: FILTER + PROJECT + SORT
+===================================================== */
 
 db.products.aggregate([
+  // Step 1: Filter only Apple products
   {
-    $match: { brand: "Apple" },
+    $match: { brand: "Apple" }
   },
+
+  // Step 2: Select required fields
   {
-    $project: { name: 1, category: 1, brand: 1, price: 1 },
+    $project: {
+      name: 1,
+      category: 1,
+      brand: 1,
+      price: 1
+    }
   },
+
+  // Step 3: Sort by price (high → low)
   {
-    $sort: { price: -1 },
-  },
+    $sort: { price: -1 }
+  }
 ]);
 
-// Filter Mobile category products amd then show name, category, and average rating from ratings.
+
+/* =====================================================
+   AGGREGATION: AVERAGE RATING
+===================================================== */
+
+// Get Mobile products with average rating
 db.products.aggregate([
   {
-    $match: { category: "Mobile" },
+    $match: { category: "Mobile" }
   },
   {
     $project: {
       name: 1,
       category: 1,
-      averageRating: { $avg: "$ratings" },
-    },
-  },
+      averageRating: { $avg: "$ratings" }
+    }
+  }
 ]);
 
-// ----------- $group -------------
+
+/* =====================================================
+   GROUPING ($group)
+===================================================== */
+
+// Group products by category and calculate stats
 db.products.aggregate([
   {
     $group: {
-      /*
-       * Step 1:
-       * Group all documents by their category.
-       *
-       * Internally, MongoDB creates temporary buckets like:
-       *
-       * Electronics
-       * ├── { iPhone, 1000 }
-       * └── { MacBook, 2000 }
-       *
-       * Furniture
-       * ├── { Chair, 300 }
-       * └── { Table, 500 }
-       *
-       * These buckets are temporary—they don't appear in the final output.
-       * Instead, MongoDB uses them so accumulator operators can process
-       * the documents inside each bucket.
-       */
+      // Group key (creates buckets)
       _id: "$category",
 
-      /*
-       * MongoDB looks inside the current bucket and
-       * adds the price of every document.
-       */
-      totalRevenue: {
-        $sum: "$price",
-      },
+      // Total price of all items in category
+      totalRevenue: { $sum: "$price" },
 
-      /*
-       * MongoDB looks inside the same bucket and
-       * calculates the average price.
-       */
-      avgPrice: {
-        $avg: "$price",
-      },
+      // Average price in category
+      avgPrice: { $avg: "$price" },
 
-      /*
-       * MongoDB visits every document in the bucket
-       * and adds 1 for each document.
-       *
-       * Document 1 -> +1
-       * Document 2 -> +1
-       * ...
-       *
-       * This is why $sum: 1 is commonly used to count documents.
-       */
-      itemCount: {
-        $sum: 1,
-      },
+      // Count of items
+      itemCount: { $sum: 1 },
 
-      /*
-       * MongoDB iterates over every document in the bucket
-       * and pushes this object into an array.
-       *
-       * For the Electronics bucket:
-       * [
-       *   { productName: "iPhone", price: 1000 },
-       *   { productName: "MacBook", price: 2000 }
-       * ]
-       */
+      // Collect product details in array
       details: {
         $push: {
           productName: "$name",
-          price: "$price",
-        },
-      },
-    },
-  },
+          price: "$price"
+        }
+      }
+    }
+  }
 ]);
 
 /*
- * Mental Model:
- *
- * Collection
- *     ↓
- * $group creates temporary buckets
- *     ↓
- * Each accumulator ($sum, $avg, $push, etc.)
- * works on one bucket at a time
- *     ↓
- * One bucket = One output document
- */
+MENTAL MODEL:
+Collection → Group into buckets → Apply calculations → Output one document per group
+*/
+
+
+/* =====================================================
+   PROJECT TRANSFORMATIONS
+===================================================== */
 
 db.products.aggregate([
   {
     $project: {
+      _id: 0,                 // Hide _id
       name: 1,
       price: 1,
-      _id: 0,
+
+      // Convert name to uppercase
       productName: { $toUpper: "$name" },
+
+      // Add static field
       inStock: "True",
-      totalPrice: {
-        $sum: ["$price", 999],
-      },
-    },
+
+      // Add 999 to price
+      totalPrice: { $sum: ["$price", 999] }
+    }
   },
   {
-    $sort: {
-      price: 1,
-    },
-  },
+    $sort: { price: 1 } // Sort low → high
+  }
 ]);
 
-/* -------------- $lookup ------------- 
-   - $loopup is used to join data from another collection. It works like SQL Join.
-*/
 
+/* =====================================================
+   LOOKUP (JOIN)
+===================================================== */
+
+// Join orders with products collection
 db.orders.aggregate([
   {
     $lookup: {
-      from: "products",
-      localField: "products.productId",
-      foreignField: "_id",
-      as: "productDetails",
-    },
-  },
+      from: "products",                // Collection to join
+      localField: "products.productId", // Field in orders
+      foreignField: "_id",              // Field in products
+      as: "productDetails"              // Output array
+    }
+  }
 ]);
 
 
-/* -------------- $unwind ---------------
-   - $unwind is used to break an array into separate documents
-*/
+/* =====================================================
+   UNWIND (ARRAY → DOCUMENTS)
+===================================================== */
 
+// Break tags array into multiple documents
 db.products.aggregate([
   {
     $unwind: "$tags"
   }
-])
+]);
 
+
+/* =====================================================
+   COMPLETE PIPELINE (UNWIND + LOOKUP)
+===================================================== */
 
 db.orders.aggregate([
-  // Keep only the products array (and _id by default)
+  // Step 1: Keep only products field
   {
     $project: {
       products: 1
     }
   },
 
-  // Create a separate document for each product in the products array
+  // Step 2: Convert each product into separate document
   {
     $unwind: "$products"
   },
 
-  // Join each product with its corresponding document
-  // from the products collection
+  // Step 3: Join with products collection
   {
     $lookup: {
-      from: "products",                  // Collection to join
-      localField: "products.productId",  // Field in orders
-      foreignField: "_id",               // Matching field in products
-      as: "productDetails"               // Output array containing matched product(s)
+      from: "products",
+      localField: "products.productId",
+      foreignField: "_id",
+      as: "productDetails"
     }
   }
 
   // Optional:
-  // Add {$unwind: "$productDetails"} here if you want
-  // productDetails to be a single object instead of an array.
+  // Add this if you want a single object instead of array
+  // { $unwind: "$productDetails" }
 ]);
+```
