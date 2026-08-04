@@ -1,4 +1,6 @@
 use("myDb");
+
+// I created this sample teachers collection so I can practice aggregation queries.
 /*
 db.teachers.insertMany([
   { _id: 1, name: "John Doe", age: 35, gender: "male" },
@@ -34,51 +36,101 @@ db.teachers.insertMany([
 ]);
 */
 
+
+// ---------- $match ----------
+
+// $match is just used to filter documents.
+// Here I'm getting only the teachers whose gender is "male".
+
 db.teachers.aggregate([
   {
     $match: { gender: "male" },
   },
 ]);
 
-// The names field uses the $push operator to add the name field from each document in the group to an array.
+
+
+// ---------- $group with $push ----------
+
+// Here I'm grouping teachers based on their age.
+// $push collects the names of all teachers in the same age group
+// and stores them inside an array called "names".
+
 db.teachers.aggregate([
   {
-    $group: { _id: "$age", names: { $push: "$name" } },
+    $group: {
+      _id: "$age",
+      names: { $push: "$name" },
+    },
   },
 ]);
 
-// Q. Group teachers by age and also show complete document per age group.
+
+
+// ---------- $group with $$ROOT ----------
+
+// Here I don't just want the names.
+// I want the complete document of every teacher in each age group.
+// $$ROOT refers to the entire current document.
+
 db.teachers.aggregate([
   {
-    $group: { _id: "$age", completeDetails: { $push: "$$ROOT" } },
+    $group: {
+      _id: "$age",
+      completeDetails: { $push: "$$ROOT" },
+    },
   },
 ]);
 
-// The "$$ROOT" value is a reference to the current document being processed in the pipeline, which represents the complete document.
 
-// Q. Give a count per age of male teacher.
+
+// $$ROOT simply represents the whole current document.
+// So instead of pushing a single field, it pushes everything.
+
+
+
+// ---------- Count male teachers by age ----------
+
+// First I filter only male teachers.
+// Then I group them by age.
+// $sum: 1 increases the count by 1 for every document in that group.
+
 db.teachers.aggregate([
   { $match: { gender: "male" } },
   {
-    $group: { _id: "$age", countOfTeachersInThisAgeGroup: { $sum: 1 } },
+    $group: {
+      _id: "$age",
+      countOfTeachersInThisAgeGroup: { $sum: 1 },
+    },
   },
 ]);
 
-// The value of $sum is 1, which means for each document in the group, the value of "number" will be increented by 1.
 
-// Q. Give a count per age of male teachers and sort them by count in descending order.
+
+// ---------- Count + Sort ----------
+
+// Same as the previous query,
+// but after counting I'm sorting the result
+// in descending order of the number of teachers.
 
 db.teachers.aggregate([
   {
     $match: { gender: "male" },
   },
   {
-    $group: { _id: "$age", numberOfTeachers: { $sum: 1 } },
+    $group: {
+      _id: "$age",
+      numberOfTeachers: { $sum: 1 },
+    },
   },
   {
-    $sort: { numberOfTeachers: -1 },
+    $sort: {
+      numberOfTeachers: -1,
+    },
   },
 ]);
 
-// We can create pipeline as much as we want.
 
+
+// Aggregation works like a pipeline.
+// I can keep adding stages one after another depending on what I want.

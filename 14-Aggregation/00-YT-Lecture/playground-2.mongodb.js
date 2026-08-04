@@ -1,4 +1,4 @@
-```js
+
 // Switch to database
 use("myDb");
 
@@ -183,4 +183,4 @@ db.orders.aggregate([
   // Add this if you want a single object instead of array
   // { $unwind: "$productDetails" }
 ]);
-```
+
