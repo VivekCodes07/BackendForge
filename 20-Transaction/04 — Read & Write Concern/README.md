@@ -2,7 +2,7 @@
 
 ## Read Concern & Write Concern
 
-So far, I know how a transaction works:
+So far, I understand the basic structure of a MongoDB transaction:
 
 ```text
 Session
@@ -14,45 +14,54 @@ Operations
 COMMIT / ABORT
 ```
 
-But now I have a new question:
+But now I have two new questions:
 
-> **When my transaction reads something, how trustworthy is that data? And when I write something, how sure am I that MongoDB actually stored it safely?**
+> **When my transaction reads something, what kind of data is it allowed to see?**
+
+and:
+
+> **When my transaction writes something, how much confirmation do I want from MongoDB?**
 
 That's where **Read Concern** and **Write Concern** come in.
 
 ---
 
-# 1. First, Don't Mix Them Up
+# 1. The Two Questions I Need to Remember
 
-I can remember them with one simple question.
+I can understand both concepts by asking two simple questions.
 
 ### Read Concern
 
-> **"What data am I allowed to see?"**
+> **"What consistency guarantee do I want for my reads?"**
 
 ### Write Concern
 
-> **"How much confirmation do I need that my write was accepted/safely acknowledged?"**
+> **"How much acknowledgement do I require for my writes?"**
 
 So:
 
 ```text
-READ CONCERN
-     ↓
-What can I TRUST when reading?
+READ
+ ↓
+Read Concern
+ ↓
+"What consistency guarantee does my read have?"
 
-WRITE CONCERN
-     ↓
-How much do I TRUST the write?
+
+WRITE
+ ↓
+Write Concern
+ ↓
+"How much acknowledgement do I require?"
 ```
 
-That's the foundation.
+This is the foundation of the whole topic.
 
 ---
 
-# 2. A Simple Real-World Analogy
+# 2. A Simple Real-World Example
 
-Imagine I order something from Amazon.
+Imagine I am using Amazon.
 
 I check my order:
 
@@ -70,53 +79,58 @@ I place an order:
 
 That's a **write**.
 
-Now imagine I ask two different questions.
+Now I can ask:
 
 ### While reading:
 
-> "Should I see data that might still be changing?"
+> "What version/state of the data should I see?"
 
 That's related to **Read Concern**.
 
 ### After writing:
 
-> "How sure should I be that this order has been safely acknowledged?"
+> "How much confirmation do I want that MongoDB has acknowledged my write?"
 
 That's related to **Write Concern**.
 
 So:
 
 ```text
-Read  → Read Concern
-Write → Write Concern
-```
+READ
+ ↓
+Read Concern
 
-That's much easier to remember than memorizing definitions.
+WRITE
+ ↓
+Write Concern
+```
 
 ---
 
 # 3. Why Do I Even Need These?
 
-At first, I might think:
+If MongoDB were always running as a single server, this might feel unnecessary.
 
-> "Why can't MongoDB just read the latest data and write the data? Done."
+But MongoDB can use a **Replica Set**.
 
-Because distributed databases aren't always that simple.
-
-MongoDB can have:
+For example:
 
 ```text
-Primary
-   ↓
-Secondaries
+                 Replica Set
+
+                   Primary
+                  /       \
+                 /         \
+                ↓           ↓
+           Secondary    Secondary
 ```
 
-And data has to move through the system.
+The Primary receives writes and the data is replicated to the Secondary members.
 
-So there can be questions like:
+Now new questions appear:
 
 ```text
-"Which version of the data should I see?"
+"Which version of the data should I read?"
 ```
 
 and:
@@ -125,51 +139,50 @@ and:
 "How many members should acknowledge my write?"
 ```
 
-Those are very different questions.
+These are different problems.
+
+```text
+READ
+ ↓
+Which data/consistency level should I see?
+ ↓
+Read Concern
+
+
+WRITE
+ ↓
+How much acknowledgement should I require?
+ ↓
+Write Concern
+```
 
 ---
 
-# 4. Read Concern — "What Am I Allowed To See?"
+# 4. Read Concern
 
-Let's focus on reads first.
-
-Suppose my transaction reads:
-
-```text
-Product stock = 10
-```
-
-But another operation is changing that stock.
-
-I need some guarantee about **what version of the data I'm seeing**.
-
-That's what Read Concern helps define.
+Read Concern controls the **consistency and visibility guarantees of data being read**.
 
 Think:
 
 ```text
 Database
-   │
-   ├── Old version
-   ├── Current version
-   └── Changing version
-          ↓
-    Read Concern
-          ↓
-    What can I see?
+    ↓
+Different states of data
+    ↓
+Read Concern
+    ↓
+What consistency guarantee does my read have?
 ```
 
-So Read Concern is basically about the **visibility and consistency of data I read**.
+So I should remember:
+
+> **Read Concern is about the consistency guarantee of my reads.**
 
 ---
 
-# 5. The Important Read Concern Levels
+# 5. Important Read Concern Levels
 
-For now, I don't need to memorize every MongoDB option.
-
-I mainly need to understand the important ideas.
-
-MongoDB commonly provides levels such as:
+MongoDB provides several Read Concern levels:
 
 ```text
 local
@@ -179,11 +192,15 @@ linearizable
 snapshot
 ```
 
-The names look scary.
+I don't need to memorize every technical detail yet.
 
-They're not.
+For my current understanding, I mainly want to understand:
 
-The key is understanding what problem each one is trying to solve.
+```text
+local
+majority
+snapshot
+```
 
 ---
 
@@ -191,78 +208,135 @@ The key is understanding what problem each one is trying to solve.
 
 Think:
 
-> **"Give me the data currently available here."**
+> **"Give me data that is locally available on the member."**
 
-It's more focused on availability than the strongest consistency guarantees.
-
-Very simplified:
+Conceptually:
 
 ```text
-Give me what this MongoDB member currently has.
+MongoDB Member
+      ↓
+What data do you currently have?
+      ↓
+Read it
 ```
 
-So I can remember:
+Example:
+
+```javascript
+db.products.find(
+    {
+        _id: 1
+    },
+    {
+        readConcern: {
+            level: "local"
+        }
+    }
+);
+```
+
+My memory:
 
 ```text
 local
- ↓
-"What do you have available right now?"
+  ↓
+Locally available data
 ```
+
+It does not require the data to be majority committed.
 
 ---
 
 # 7. `majority`
 
-Now I ask for something stronger.
-
-> **"I want data that has been acknowledged by a majority of the replica set."**
+Now I want a stronger consistency guarantee.
 
 Think:
 
+> **"I want to read data that has been majority committed."**
+
+Suppose I have:
+
 ```text
-Primary
-   │
-   ├── Secondary ✓
-   └── Secondary ✓
-          ↓
-       Majority
+Primary       ✓
+Secondary     ✓
+Secondary     ✗
 ```
 
-This is useful when I care more about seeing data that has reached a stronger level of durability/consistency.
+With three voting members:
 
-The word **majority** is the key.
+```text
+2 / 3
+```
+
+is a majority.
+
+So:
 
 ```text
 majority
-   ↓
-More members agree
-   ↓
-Stronger guarantee
+    ↓
+Majority committed data
+```
+
+Example:
+
+```javascript
+db.products.find(
+    {
+        _id: 1
+    },
+    {
+        readConcern: {
+            level: "majority"
+        }
+    }
+);
+```
+
+My memory:
+
+```text
+majority
+    ↓
+Read majority-committed data
 ```
 
 ---
 
 # 8. `snapshot`
 
-This one becomes especially interesting for transactions.
+This is especially important when I am learning transactions.
 
-Think of it like:
+Think:
 
-> **"Give my transaction a consistent view of the data."**
+> **"Give my transaction a consistent snapshot of the data."**
 
-Imagine I start reading:
+Conceptually:
 
 ```text
 Transaction starts
        ↓
-Data snapshot
+Consistent snapshot
        ↓
-My reads see a consistent view
+Transaction performs reads
+       ↓
+Reads use that snapshot
 ```
 
-Instead of my transaction feeling like it's looking at a database that is constantly changing underneath it, the reads can be based on a consistent snapshot.
+Example:
 
-Mental model:
+```javascript
+const session = db.getMongo().startSession();
+
+session.startTransaction({
+    readConcern: {
+        level: "snapshot"
+    }
+});
+```
+
+My mental model:
 
 ```text
 Transaction
@@ -272,142 +346,217 @@ Snapshot
 Consistent view
 ```
 
-This is why `snapshot` is an important concept when studying transactions.
+I should remember:
+
+> **`snapshot` is especially important when thinking about consistent reads inside transactions.**
 
 ---
 
-# 9. Why Does This Matter?
+# 9. Read Concern Summary
 
-Imagine I'm processing an order.
-
-At the beginning I read:
+For now, I can remember the important levels like this:
 
 ```text
-Stock = 10
+local
+ ↓
+Locally available data
+
+
+majority
+ ↓
+Majority-committed data
+
+
+snapshot
+ ↓
+Consistent transaction snapshot
 ```
 
-Then another operation changes it.
+I don't need to memorize every edge case yet.
 
-If my transaction suddenly sees a completely different state halfway through the operation, things can get complicated.
-
-I want predictable behavior.
-
-So:
-
-```text
-Read Concern
-      ↓
-Controls the consistency/visibility
-of the data my transaction reads
-```
+The important thing is understanding the problem each level is solving.
 
 ---
 
 # 10. Now Write Concern
 
-Let's switch sides.
+Let's switch from reading to writing.
 
-Read Concern asks:
-
-> **"What am I allowed to see?"**
-
-Write Concern asks:
-
-> **"How much confirmation do I want after writing?"**
-
-Suppose I do:
+Suppose I execute:
 
 ```javascript
-db.orders.insertOne(order)
+db.users.insertOne({
+    name: "Vivek"
+});
 ```
 
 MongoDB receives my write.
 
-But I might care about:
+But I can ask:
 
-```text
-"Has the primary received it?"
-```
+> **"How much confirmation do I want before MongoDB tells me the write has been acknowledged?"**
 
-or:
-
-```text
-"Has a majority of the replica set acknowledged it?"
-```
-
-Those are different levels of assurance.
-
----
-
-# 11. Write Concern Mental Model
+That's Write Concern.
 
 Think:
 
 ```text
 Application
      ↓
-   Write
+   WRITE
      ↓
- MongoDB
-     ↓
-How much confirmation?
+  MongoDB
      ↓
 Write Concern
+     ↓
+How much acknowledgement?
 ```
 
-So Write Concern is basically about **acknowledgement and durability requirements for writes**.
+So:
+
+> **Write Concern defines the acknowledgement requirements for my write.**
 
 ---
 
-# 12. `w`
+# 11. The Main Write Concern Parameters
 
-One important Write Concern option is:
+The important parameters I am learning are:
 
 ```text
 w
+j
+wtimeout
 ```
 
-It controls how many members need to acknowledge the write.
+Think of them like this:
+
+```text
+                    WRITE CONCERN
+                         │
+          ┌──────────────┼──────────────┐
+          ↓              ↓              ↓
+          w              j          wtimeout
+          │              │              │
+          ↓              ↓              ↓
+   How many members?   Journal?    How long to wait?
+```
+
+---
+
+# 12. The `w` Parameter
+
+The `w` option controls the required level of acknowledgement.
 
 For example:
 
-```text
-w: 1
+```javascript
+db.users.insertOne(
+    {
+        name: "Vivek"
+    },
+    {
+        writeConcern: {
+            w: 1
+        }
+    }
+);
 ```
 
-means I want acknowledgement from the primary.
+Think:
+
+```text
+w: 1
+  ↓
+Wait for acknowledgement from one member
+```
+
+For a normal replica-set write, this means acknowledgement from the **Primary**.
 
 Conceptually:
 
 ```text
 Application
      ↓
+   Write
+     ↓
 Primary
      ↓
 ACK ✓
 ```
 
+My memory:
+
+> **`w` = How many members need to acknowledge the write?**
+
 ---
 
-# 13. `w: "majority"`
+# 13. `w: 1`
 
-Now:
+This is the common basic form.
 
-```text
-w: "majority"
+```javascript
+db.users.insertOne(
+    {
+        name: "Vivek"
+    },
+    {
+        writeConcern: {
+            w: 1
+        }
+    }
+);
 ```
 
-means I want acknowledgement from a majority of the replica set.
-
-For example:
+Think:
 
 ```text
-Primary ✓
-Secondary ✓
-Secondary ✗
+w: 1
+ ↓
+Wait for one acknowledgement
+ ↓
+Primary acknowledges
+ ↓
+Return success
 ```
 
-If there are three voting members:
+So:
+
+```text
+w: 1
+ ↓
+Primary acknowledgement
+```
+
+---
+
+# 14. `w: "majority"`
+
+Now I want acknowledgement from a majority of the voting members.
+
+Example:
+
+```javascript
+db.users.insertOne(
+    {
+        name: "Vivek"
+    },
+    {
+        writeConcern: {
+            w: "majority"
+        }
+    }
+);
+```
+
+Suppose my replica set has:
+
+```text
+Primary       ✓
+Secondary     ✓
+Secondary     ✗
+```
+
+Then:
 
 ```text
 2 / 3
@@ -419,78 +568,379 @@ So:
 
 ```text
 w: "majority"
-      ↓
+       ↓
 Wait for majority acknowledgement
 ```
 
-This gives me a stronger durability guarantee than simply waiting for the primary.
+My memory:
+
+> **`w: "majority"` does NOT mean every server. It means a majority of the voting members.**
 
 ---
 
-# 14. `j`
+# 15. `w: 0`
 
-Another Write Concern option is:
+Now I have another option:
+
+```javascript
+db.users.insertOne(
+    {
+        name: "Vivek"
+    },
+    {
+        writeConcern: {
+            w: 0
+        }
+    }
+);
+```
+
+Think:
+
+```text
+w: 0
+ ↓
+Do not wait for write acknowledgement
+```
+
+So:
+
+```text
+Application
+     ↓
+   WRITE
+     ↓
+MongoDB
+     ↓
+Don't wait for acknowledgement
+```
+
+This is called an **unacknowledged write**.
+
+The important memory point is:
+
+> **`w: 0` means the client does not wait for acknowledgement of the write.**
+
+I should NOT memorize it as:
+
+> "MongoDB definitely returns success before the write happens."
+
+That's too simplistic.
+
+The correct mental model is:
+
+```text
+w: 0
+ ↓
+No write acknowledgement is requested
+```
+
+---
+
+# 16. Comparing `w`
+
+Now the three values become easy:
+
+```text
+w: 0
+ ↓
+Don't wait for acknowledgement
+
+
+w: 1
+ ↓
+Wait for one acknowledgement
+
+
+w: "majority"
+ ↓
+Wait for majority acknowledgement
+```
+
+So:
+
+```text
+             w
+             │
+      ┌──────┼─────────┐
+      ↓      ↓         ↓
+      0      1      "majority"
+      │      │         │
+      ↓      ↓         ↓
+   Don't   Primary   Majority
+   wait    ACK       ACK
+```
+
+---
+
+# 17. The `j` Parameter
+
+Now I have:
 
 ```text
 j
 ```
 
-It relates to whether the write has been written to the journal.
+`j` is related to MongoDB's **journal**.
 
-Very simplified:
+Think of the journal as a durable record of database changes.
+
+The simple mental model is:
 
 ```text
 Write
   ↓
 Journal
   ↓
-More durable acknowledgement
+Acknowledgement
 ```
 
-I don't need to dive deeply into MongoDB's storage engine internals yet.
+Example:
 
-The important memory point is:
+```javascript
+db.users.insertOne(
+    {
+        name: "Vivek"
+    },
+    {
+        writeConcern: {
+            w: 1,
+            j: true
+        }
+    }
+);
+```
 
-> **`j` is about journal acknowledgement.**
+Here:
+
+```text
+w: 1
+ ↓
+Wait for primary acknowledgement
+
+j: true
+ ↓
+Require journal acknowledgement
+```
+
+So my memory is:
+
+> **`j: true` = wait for the write to be written to the journal before acknowledgement.**
+
+I don't need to understand the storage engine internals yet.
+
+Just remember:
+
+```text
+j
+ ↓
+Journal
+```
 
 ---
 
-# 15. Read Concern vs Write Concern
+# 18. The `wtimeout` Parameter
 
-This is the comparison I absolutely want to remember:
+Now imagine I use:
 
-|               | Read Concern             | Write Concern                           |
-| ------------- | ------------------------ | --------------------------------------- |
-| Main question | What data can I see?     | How much acknowledgement do I need?     |
-| Applies to    | Reads                    | Writes                                  |
-| Main idea     | Consistency / visibility | Acknowledgement / durability            |
-| Memory trick  | "What can I trust?"      | "Did my write get safely acknowledged?" |
+```javascript
+w: "majority"
+```
+
+MongoDB may need to wait for other replica-set members.
+
+Suppose one Secondary is very slow:
+
+```text
+Primary       ✓
+Secondary     ✓
+Secondary     ...
+                  ↓
+               Very slow
+```
+
+Without a timeout, I may have to keep waiting for the requested acknowledgement.
+
+That's where:
+
+```text
+wtimeout
+```
+
+comes in.
+
+Think:
+
+> **"How long should MongoDB wait for the requested write concern?"**
+
+---
+
+# 19. `wtimeout: 5000`
+
+For example:
+
+```javascript
+db.users.insertOne(
+    {
+        name: "Vivek"
+    },
+    {
+        writeConcern: {
+            w: "majority",
+            wtimeout: 5000
+        }
+    }
+);
+```
+
+Now I can read this as:
+
+```text
+w: "majority"
+        ↓
+Wait for majority acknowledgement
+
+wtimeout: 5000
+        ↓
+Wait up to 5000 milliseconds
+```
+
+Since:
+
+```text
+5000 milliseconds = 5 seconds
+```
+
+I can think:
+
+```text
+Write
+  ↓
+Wait for majority
+  ↓
+Maximum wait = 5 seconds
+```
+
+If the requested acknowledgement isn't achieved within that period, MongoDB can return a **write concern error**.
+
+Important:
+
+> **A `wtimeout` does not automatically roll back the write.**
+
+The write may already have succeeded on the Primary even though the required acknowledgement was not received in time.
+
+---
+
+# 20. Complete Write Concern Example
+
+Now the instructor's example makes complete sense:
+
+```javascript
+db.users.insertOne(
+    {
+        name: "Manas"
+    },
+    {
+        writeConcern: {
+            w: "majority",
+            wtimeout: 5000
+        }
+    }
+);
+```
+
+Read it from top to bottom:
+
+```text
+insertOne()
+    ↓
+Write the document
+    ↓
+w: "majority"
+    ↓
+Wait for majority acknowledgement
+    ↓
+wtimeout: 5000
+    ↓
+Don't wait longer than 5 seconds
+```
+
+This is much easier than memorizing the syntax blindly.
+
+---
+
+# 21. Combining `w` and `j`
+
+Write Concern options can be combined.
+
+For example:
+
+```javascript
+db.users.insertOne(
+    {
+        name: "Manas"
+    },
+    {
+        writeConcern: {
+            w: "majority",
+            j: true
+        }
+    }
+);
+```
+
+My mental model:
+
+```text
+w: "majority"
+       ↓
+Majority acknowledgement
+
+j: true
+       ↓
+Journal acknowledgement
+```
+
+I should remember what each option controls separately.
+
+---
+
+# 22. Read Concern vs Write Concern
+
+This is the comparison I want permanently in my memory:
+
+|                   | Read Concern                                  | Write Concern                          |
+| ----------------- | --------------------------------------------- | -------------------------------------- |
+| Main question     | What consistency guarantee does my read have? | How much acknowledgement do I require? |
+| Applies to        | Reads                                         | Writes                                 |
+| Main idea         | Read consistency / visibility                 | Write acknowledgement                  |
+| Important options | `local`, `majority`, `snapshot`               | `w`, `j`, `wtimeout`                   |
+| Memory trick      | "What am I seeing?"                           | "How much acknowledgement do I need?"  |
 
 So:
 
 ```text
 READ
-  ↓
+ ↓
 Read Concern
-  ↓
-"What am I seeing?"
+ ↓
+"What consistency guarantee does my read have?"
+
 
 WRITE
-  ↓
+ ↓
 Write Concern
-  ↓
-"How sure am I about this write?"
+ ↓
+"How much acknowledgement do I require?"
 ```
 
 ---
 
-# 16. Now Bring Transactions Into The Picture
+# 23. Now Bring Transactions Into the Picture
 
-This is where things become interesting.
+This is where the concepts connect.
 
-A transaction isn't isolated from all these concerns.
-
-I can have:
+A transaction can have:
 
 ```text
 Transaction
@@ -500,66 +950,215 @@ Transaction
      └── Write Concern
 ```
 
-So when designing a transaction, I'm not only thinking:
+For example:
 
-```text
-"Should I commit?"
+```javascript
+const session = db.getMongo().startSession();
+
+session.startTransaction({
+    readConcern: {
+        level: "snapshot"
+    },
+
+    writeConcern: {
+        w: "majority"
+    }
+});
 ```
 
-I can also think:
+Now I can read this as:
 
 ```text
-"How consistent should my reads be?"
-"How strongly should my writes be acknowledged?"
-```
-
----
-
-# 17. A Transaction Example
-
-Imagine an e-commerce checkout.
-
-Customer buys the last available product.
-
-My transaction might do:
-
-```text
-Read inventory
-      ↓
-Stock = 1
-      ↓
-Create order
-      ↓
-Reduce stock
-      ↓
+Start Transaction
+       ↓
+Read using snapshot consistency
+       ↓
+Perform operations
+       ↓
+Require majority write acknowledgement
+       ↓
 Commit
 ```
 
-Now imagine another customer is trying to buy the same product at nearly the same time.
+---
 
-Suddenly I care a lot about:
+# 24. Complete Transaction Example
 
-```text
-"What version of inventory am I reading?"
+Let's use my Bank example.
+
+```javascript
+use("Bank");
 ```
 
-That's where read consistency becomes important.
+Suppose I have:
 
-And after I write the new stock value:
+```javascript
+db.accounts.insertMany([
+    {
+        _id: 1,
+        name: "Vivek",
+        balance: 5000
+    },
 
-```text
-"How safely has that write been acknowledged?"
+    {
+        _id: 2,
+        name: "Abhishek",
+        balance: 2000
+    }
+]);
 ```
 
-That's where write concern matters.
+Now I want to transfer ₹1000.
+
+```javascript
+const session = db.getMongo().startSession();
+
+try {
+
+    session.startTransaction({
+        readConcern: {
+            level: "snapshot"
+        },
+
+        writeConcern: {
+            w: "majority"
+        }
+    });
+
+    const accounts = session
+        .getDatabase("Bank")
+        .accounts;
+
+    /*
+     * Read both accounts.
+     * The transaction uses the configured
+     * read concern for its reads.
+     */
+
+    const vivek = accounts.findOne({
+        _id: 1
+    });
+
+    const abhishek = accounts.findOne({
+        _id: 2
+    });
+
+    /*
+     * Transfer ₹1000 from Vivek
+     * to Abhishek.
+     */
+
+    accounts.updateOne(
+        {
+            _id: 1
+        },
+        {
+            $inc: {
+                balance: -1000
+            }
+        }
+    );
+
+    accounts.updateOne(
+        {
+            _id: 2
+        },
+        {
+            $inc: {
+                balance: 1000
+            }
+        }
+    );
+
+    /*
+     * If everything succeeds,
+     * commit the transaction.
+     */
+
+    session.commitTransaction();
+
+} catch (error) {
+
+    /*
+     * If something goes wrong,
+     * abort the transaction.
+     */
+
+    session.abortTransaction();
+
+} finally {
+
+    /*
+     * End the session when
+     * the transaction is finished.
+     */
+
+    session.endSession();
+
+}
+```
+
+Now the whole flow is:
+
+```text
+SESSION
+   ↓
+TRANSACTION
+   ↓
+snapshot Read Concern
+   ↓
+Consistent transaction reads
+   ↓
+WRITE OPERATIONS
+   ↓
+majority Write Concern
+   ↓
+Majority acknowledgement requirement
+   ↓
+COMMIT
+```
 
 ---
 
-# 18. One Important Clarification
+# 25. Important Transaction Rule
 
-Read Concern and Write Concern are **not the same thing as transactions**.
+There is one thing I need to keep in mind:
 
-Don't think:
+For a **multi-document transaction**, I configure the transaction's Write Concern rather than trying to give each individual write operation its own Write Concern.
+
+So I prefer:
+
+```javascript
+session.startTransaction({
+    writeConcern: {
+        w: "majority"
+    }
+});
+```
+
+instead of trying to do:
+
+```javascript
+accounts.updateOne(
+    { _id: 1 },
+    { $inc: { balance: -1000 } },
+    {
+        writeConcern: {
+            w: "majority"
+        }
+    }
+);
+```
+
+The transaction controls the write concern for the transaction.
+
+Also, `w: 0` is not something I should use for a multi-document transaction. Transactions require acknowledged writes.
+
+---
+
+# 26. Transaction vs Read Concern vs Write Concern
+
+I should NOT think:
 
 ```text
 Read Concern = Transaction
@@ -569,232 +1168,425 @@ Write Concern = Transaction
 Instead:
 
 ```text
-Transaction
-   │
-   ├── Groups operations
-   │
-   ├── Read Concern
-   │      ↓
-   │   Read consistency
-   │
-   └── Write Concern
-          ↓
-       Write acknowledgement
+                    TRANSACTION
+                         │
+          ┌──────────────┼──────────────┐
+          ↓              ↓              ↓
+       Groups          READ           WRITE
+      operations         │               │
+      together           ↓               ↓
+                  Read Concern      Write Concern
+                        ↓               ↓
+                 Read consistency   Acknowledgement
 ```
 
-They solve different problems.
+Each solves a different problem.
 
 ---
 
-# 19. The Mental Model I Want
+# 27. The Three Questions
 
-Imagine I'm running a restaurant.
-
-### Read Concern
-
-I'm asking the kitchen:
-
-> "What is the current confirmed state of this order?"
-
-### Write Concern
-
-I'm asking:
-
-> "When I submit this order change, how much confirmation do I need that it has been recorded?"
+This is the most important part of the lesson.
 
 ### Transaction
 
-I'm saying:
+> **"Which operations belong together?"**
 
-> "These five changes belong to one order operation. Treat them as one unit."
+### Read Concern
+
+> **"What consistency guarantee do my reads have?"**
+
+### Write Concern
+
+> **"How much acknowledgement do my writes require?"**
 
 So:
 
 ```text
-Transaction
-   ↓
+TRANSACTION
+     ↓
 "These operations belong together."
 
-Read Concern
-   ↓
-"What data should I trust?"
 
-Write Concern
-   ↓
-"How much acknowledgement do I require?"
+READ CONCERN
+     ↓
+"What consistency guarantee do my reads have?"
+
+
+WRITE CONCERN
+     ↓
+"How much acknowledgement do my writes require?"
 ```
-
-That separation makes the whole topic much easier.
 
 ---
 
-# 20. What I Should NOT Do Yet
+# 28. Write Concern Memory Map
 
-I don't need to memorize complicated combinations like:
+I want to remember the Write Concern parameters like this:
 
 ```text
-readConcern: { level: "snapshot" }
-writeConcern: { w: "majority", j: true }
+                     WRITE CONCERN
+                          │
+          ┌───────────────┼────────────────┐
+          ↓               ↓                ↓
+          w               j            wtimeout
+          │               │                │
+          ↓               ↓                ↓
+   Acknowledgement      Journal       Maximum wait
+       level
+          │
+     ┌────┼───────────────┐
+     ↓    ↓               ↓
+    0     1          "majority"
+     │    │               │
+     ↓    ↓               ↓
+   Don't Primary       Majority
+   wait   ACK             ACK
 ```
 
-just for the sake of memorization.
+This is the mental picture I want in my head.
 
-I first want to understand the questions behind them.
+---
 
-When I see:
+# 29. Quick Code Reference
+
+## `w: 0`
 
 ```javascript
-readConcern
+db.users.insertOne(
+    {
+        name: "Vivek"
+    },
+    {
+        writeConcern: {
+            w: 0
+        }
+    }
+);
 ```
 
-I should think:
+```text
+Don't wait for acknowledgement
+```
 
-> **"How consistent should my reads be?"**
+---
 
-When I see:
+## `w: 1`
 
 ```javascript
-writeConcern
+db.users.insertOne(
+    {
+        name: "Vivek"
+    },
+    {
+        writeConcern: {
+            w: 1
+        }
+    }
+);
 ```
 
-I should think:
-
-> **"How much acknowledgement/durability do I require for my writes?"**
-
-That mental connection is more valuable than memorizing syntax.
-
----
-
-# 21. The Whole Picture
-
-Now I can see how everything I've learned fits together:
-
 ```text
-                 TRANSACTION
-                      │
-          ┌───────────┴───────────┐
-          │                       │
-        READ                    WRITE
-          │                       │
-          ▼                       ▼
-   READ CONCERN             WRITE CONCERN
-          │                       │
-          ▼                       ▼
- "What data do I see?"   "How much acknowledgement?"
-```
-
-And finally:
-
-```text
-                 TRANSACTION
-                      │
-                      ▼
-                COMMIT / ABORT
+Wait for primary acknowledgement
 ```
 
 ---
 
-# 22. The Most Important Memory Trick
+## `w: "majority"`
+
+```javascript
+db.users.insertOne(
+    {
+        name: "Vivek"
+    },
+    {
+        writeConcern: {
+            w: "majority"
+        }
+    }
+);
+```
+
+```text
+Wait for majority acknowledgement
+```
+
+---
+
+## `j: true`
+
+```javascript
+db.users.insertOne(
+    {
+        name: "Vivek"
+    },
+    {
+        writeConcern: {
+            w: 1,
+            j: true
+        }
+    }
+);
+```
+
+```text
+Require journal acknowledgement
+```
+
+---
+
+## `wtimeout`
+
+```javascript
+db.users.insertOne(
+    {
+        name: "Vivek"
+    },
+    {
+        writeConcern: {
+            w: "majority",
+            wtimeout: 5000
+        }
+    }
+);
+```
+
+```text
+Wait for majority
+     ↓
+Maximum wait = 5 seconds
+```
+
+---
+
+# 30. The Most Important Correction in My Thinking
+
+I should avoid saying:
+
+> "Read Concern tells me how much I trust the data."
+
+That's a useful beginner shortcut, but the technically better understanding is:
+
+> **Read Concern defines the consistency/visibility guarantees of my reads.**
+
+Similarly, I should avoid saying:
+
+> "Write Concern guarantees my data can never be lost."
+
+A better understanding is:
+
+> **Write Concern defines the acknowledgement requirements for my writes.**
+
+These small distinctions will become important when I learn more about replica sets, failover, and durability.
+
+---
+
+# 31. What I Should Know From This Lesson
+
+At the end of this lesson, I should know:
+
+```text
+READ CONCERN
+
+local
+majority
+snapshot
+```
+
+And:
+
+```text
+WRITE CONCERN
+
+w
+j
+wtimeout
+```
+
+Specifically:
+
+```text
+w: 0
+    ↓
+No acknowledgement requested
+
+
+w: 1
+    ↓
+Primary acknowledgement
+
+
+w: "majority"
+    ↓
+Majority acknowledgement
+
+
+j: true
+    ↓
+Journal acknowledgement
+
+
+wtimeout: 5000
+    ↓
+Maximum wait of 5 seconds
+```
+
+---
+
+# 32. Self-Test
+
+Before moving to the next lesson, I should be able to answer these without looking at my notes.
+
+### Read Concern
+
+**1. What problem does Read Concern solve?**
+
+**2. What does `local` mean?**
+
+**3. What does `majority` mean as a Read Concern?**
+
+**4. Why is `snapshot` important for transactions?**
+
+### Write Concern
+
+**5. What problem does Write Concern solve?**
+
+**6. What does `w` control?**
+
+**7. What does `w: 0` mean?**
+
+**8. What does `w: 1` mean?**
+
+**9. What does `w: "majority"` mean?**
+
+**10. What does `j: true` mean?**
+
+**11. What does `wtimeout` control?**
+
+**12. What happens if `wtimeout` is reached?**
+
+**13. Does `wtimeout` automatically roll back the write?**
+
+### Transactions
+
+**14. Where can I configure Read Concern in a transaction?**
+
+```javascript
+session.startTransaction({
+    readConcern: {
+        level: "snapshot"
+    }
+});
+```
+
+**15. Where can I configure Write Concern?**
+
+```javascript
+session.startTransaction({
+    writeConcern: {
+        w: "majority"
+    }
+});
+```
+
+**16. Can I use `w: 0` for a multi-document transaction?**
+
+I should know that transactions require acknowledged writes, so `w: 0` is not appropriate for them.
+
+---
+
+# 33. Final Mental Model
 
 I want these three questions permanently connected:
 
 ```text
-TRANSACTION
-"Which operations belong together?"
-
-READ CONCERN
-"What data should I see?"
-
-WRITE CONCERN
-"How much acknowledgement do I need?"
+                    TRANSACTION
+                         ↓
+              "What belongs together?"
+                         │
+                         │
+             ┌───────────┴───────────┐
+             ↓                       ↓
+       READ CONCERN             WRITE CONCERN
+             ↓                       ↓
+      "What consistency        "How much
+       guarantee do my          acknowledgement
+       reads have?"             do I require?"
 ```
 
-That's it.
-
-If I remember those three questions, the terminology becomes much easier.
-
----
-
-# 23. Self-Test
-
-Before moving to the next lesson, I should be able to answer:
-
-### 1. What problem does Read Concern solve?
-
-### 2. What problem does Write Concern solve?
-
-### 3. What is the difference between `local` and `majority` at a high level?
-
-### 4. Why is `snapshot` useful for transactions?
-
-### 5. What does `w` represent?
-
-### 6. What does `w: "majority"` mean?
-
-### 7. What is `j` related to?
-
-### 8. Are Read Concern and Write Concern the same thing as a transaction?
-
-### 9. Why might an e-commerce transaction care about read consistency?
-
-### 10. Can I explain the difference between these three?
+And inside Write Concern:
 
 ```text
-Transaction
-Read Concern
-Write Concern
+w
+↓
+How many members acknowledge?
+
+
+j
+↓
+Journal acknowledgement?
+
+
+wtimeout
+↓
+How long should I wait?
 ```
-
-If I can say:
-
-> **Transaction decides which operations belong together. Read Concern influences what my transaction can reliably see. Write Concern influences how strongly my writes need to be acknowledged.**
-
-then I've understood the main idea.
 
 ---
 
 # One-Line Memory
 
-> **Transaction = what belongs together. Read Concern = what I see. Write Concern = how strongly my write is acknowledged.**
+> **Transaction = what belongs together. Read Concern = what consistency guarantee my reads have. Write Concern = how much acknowledgement my writes require.**
 
 ---
 
 # Next Lesson
 
-Now I know:
+Now I understand how MongoDB controls:
 
 ```text
 Transaction
-    ↓
+     ↓
 Read Concern
-    ↓
+     ↓
 Write Concern
 ```
 
-But there's still a big question.
+But there is still a big question.
 
-What happens when:
+What happens when two transactions run at almost the exact same time?
+
+For example:
 
 ```text
 Transaction A
-      ↓
-changes some data
+     ↓
+Reads Product
+     ↓
+Stock = 1
+
 
 Transaction B
-      ↓
-tries to read/write the same data
+     ↓
+Reads Product
+     ↓
+Stock = 1
 ```
 
-at almost the exact same time?
+Both transactions think the product is available.
 
-Can they interfere?
+Now what happens?
 
-Can they see each other's changes?
+Can both modify the same document?
 
-What happens when two transactions fight over the same document?
+Can one transaction see another transaction's uncommitted changes?
 
-That's where I'll learn:
+What happens when two transactions try to modify the same document?
+
+What happens when MongoDB detects a conflict?
+
+This leads to:
 
 # Lesson 5 — Transaction Isolation & Concurrency
 
-This is where MongoDB transactions start becoming really interesting.
+This is where transactions become much more interesting because now I am dealing with **multiple transactions happening at the same time**.
